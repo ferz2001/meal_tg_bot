@@ -9,7 +9,7 @@
 
 1. **Клонируйте репозиторий**:
    ```bash
-   git clone https://github.com/ваш_проект
+   git clone https://github.com/ferz2001/meal_tg_bot
    cd MealTgBot
    ```
 
