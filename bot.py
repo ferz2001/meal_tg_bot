@@ -4,7 +4,7 @@ import os
 import json
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import BotCommand  # ✅ ПРАВИЛЬНО
+from aiogram.types import BotCommand
 from aiogram.filters import Command
 from dotenv import load_dotenv
 from openai import OpenAI
