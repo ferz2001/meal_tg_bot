@@ -198,6 +198,42 @@ async def process_photo(message: types.Message):
         await message.answer("Произошла ошибка при обработке изображения. Попробуйте ещё раз позже.")
 
 
+@dp.message(Command("eat"))
+async def eat_command(message: types.Message):
+    """Добавляет блюдо в дневник вручную."""
+    user_id = message.from_user.id
+    args = message.text.split("'")
+
+    if len(args) < 3:
+        await message.answer("⚠ Некорректный формат. Используйте:\n/eat 'Название блюда' 'Калорийность'")
+        return
+
+    meal_name = args[1].strip()
+    try:
+        calories = int(args[2].strip())
+    except ValueError:
+        await message.answer("⚠ Калорийность должна быть целым числом!")
+        return
+
+    # Добавляем в базу данных
+    await add_meal(user_id, meal_name, calories)
+
+    # Получаем обновленную статистику
+    consumed = await get_calories_consumed(user_id)
+    remaining = (await get_daily_calories(user_id)) - consumed
+
+    meal_text = (
+        f"✅ *Блюдо добавлено!*\n\n"
+        f"🍽 *Название*: {meal_name}\n"
+        f"🔥 *Калории*: {calories} ккал\n\n"
+        f"📊 *Обновленная статистика:*\n"
+        f"✅ *Съедено*: {consumed} ккал\n"
+        f"🔻 *Осталось*: {remaining} ккал\n"
+    )
+
+    await message.answer(meal_text, parse_mode="Markdown")
+
+
 async def main():
     """Запуск бота."""
     await create_db()
@@ -205,6 +241,7 @@ async def main():
         BotCommand(command="start", description="Запустить бота"),
         BotCommand(command="calc", description="Рассчитать КБЖУ по фото"),
         BotCommand(command="done", description="Добавить последнее блюдо в дневник"),
+        BotCommand(command="eat", description="Добавить блюдо вручную"),
         BotCommand(command="stats", description="Показать статистику за день"),
         BotCommand(command="reset", description="Сбросить статистику за день"),
         BotCommand(command="setgoal", description="Установить дневную норму калорий (/setgoal 2000)")
