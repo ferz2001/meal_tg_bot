@@ -202,7 +202,7 @@ async def process_photo(message: types.Message):
 async def eat_command(message: types.Message):
     """Добавляет блюдо в дневник вручную."""
     user_id = message.from_user.id
-    args = message.text.split("'")
+    args = message.text.split()
 
     if len(args) < 3:
         await message.answer("⚠ Некорректный формат. Используйте:\n/eat 'Название блюда' 'Калорийность'")
