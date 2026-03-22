@@ -210,6 +210,5 @@ async def show_stats_callback(callback: types.CallbackQuery):
 async def reset_stats_callback(callback: types.CallbackQuery):
     """Сбрасывает статистику за день."""
     await reset_daily_meals(callback.from_user.id)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("🗑 Статистика за сегодня очищена!")
+    await callback.message.edit_text("🗑 Статистика за сегодня очищена!")
     await callback.answer()
