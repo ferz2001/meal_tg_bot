@@ -43,12 +43,6 @@ async def reset_command(message: types.Message):
     await message.answer("📭 Ваша статистика за сегодня обнулена!")
 
 
-async def show_stats_callback(callback: types.CallbackQuery):
-    """Обработчик inline-кнопки 'Посмотреть всё добавленное'."""
-    await _send_stats(callback.from_user.id, callback.message.answer)
-    await callback.answer()
-
-
 async def _send_stats(user_id: int, reply_func):
     """Формирует и отправляет полную статистику за день."""
     consumed = await get_calories_consumed(user_id)
