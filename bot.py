@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from config import settings
 from db import create_db
 from commands import (done_command, start_command, setgoal_command, stats_command, reset_command,
-                      process_photo_and_additional, eat_command)
+                      process_photo_and_additional, eat_command, add_meal_callback)
 
 # Инициализируем бота и диспетчер
 bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
@@ -23,6 +23,7 @@ dp.message.register(reset_command, Command("reset"))
 dp.message.register(done_command, Command("done"))
 dp.message.register(process_photo_and_additional, F.photo)
 dp.message.register(eat_command, Command("eat"))
+dp.callback_query.register(add_meal_callback, F.data == "add_meal")
 
 
 async def main():
