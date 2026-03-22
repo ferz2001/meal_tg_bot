@@ -110,7 +110,7 @@ async def eat_command(message: types.Message):
 
 
 async def process_photo_and_additional(message: types.Message):
-    """Обрабатывает любое фото, анализирует через Mistral и автоматически добавляет в дневник."""
+    """Обрабатывает фото, анализирует через Mistral и предлагает добавить в дневник."""
     from bot import bot
 
     # Скачиваем фото
@@ -144,18 +144,10 @@ async def process_photo_and_additional(message: types.Message):
     meal_data = json.loads(ai_response)
     user_id = message.from_user.id
 
-    # Автоматически добавляем блюдо в дневник
-    await add_meal(
-        user_id,
-        meal_data.get("название", ""),
-        meal_data.get("калории", 0),
-        proteins=meal_data.get("белки_г", 0),
-        fats=meal_data.get("жиры_г", 0),
-        carbs=meal_data.get("углеводы_г", 0),
-    )
+    # Сохраняем данные о блюде — ждём решения пользователя
+    _pending_meals[user_id] = meal_data
 
     meal_text = (
-        f"✅ *Блюдо добавлено в дневник!*\n\n"
         f"🍽 *Блюдо*: {meal_data.get('название')}\n"
         f"🍏 *Вес*: {meal_data.get('вес_г')} г\n"
         f"🔥 *Калории*: {meal_data.get('калории')} ккал\n"
@@ -166,12 +158,53 @@ async def process_photo_and_additional(message: types.Message):
     )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Посмотреть всё добавленное", callback_data="show_stats")]
+        [InlineKeyboardButton(text="✅ Добавить в дневник", callback_data="add_meal")],
+        [InlineKeyboardButton(text="📊 Посмотреть всё", callback_data="show_stats")],
     ])
 
     await message.answer(meal_text, parse_mode="Markdown", reply_markup=keyboard)
 
 
-# Оставлена для обратной совместимости, фактически не используется
 async def add_meal_callback(callback: types.CallbackQuery):
-    await callback.answer("Блюда теперь добавляются автоматически.", show_alert=True)
+    """Добавляет последнее распознанное блюдо в дневник и показывает статистику."""
+    user_id = callback.from_user.id
+    meal_data = _pending_meals.pop(user_id, None)
+
+    if not meal_data:
+        await callback.answer("Нет данных о блюде. Отправьте фото заново.", show_alert=True)
+        return
+
+    await add_meal(
+        user_id,
+        meal_data.get("название", ""),
+        meal_data.get("калории", 0),
+        proteins=meal_data.get("белки_г", 0),
+        fats=meal_data.get("жиры_г", 0),
+        carbs=meal_data.get("углеводы_г", 0),
+    )
+
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+    consumed = await get_calories_consumed(user_id)
+    daily = await get_daily_calories(user_id)
+    proteins, fats, carbs = await get_macros_for_today(user_id)
+    remaining = daily - consumed
+
+    confirm_text = (
+        f"✅ *Блюдо добавлено в дневник!*\n\n"
+        f"📊 *Статистика на сегодня:*\n"
+        f"🔥 *Калории*: {consumed} / {daily} ккал\n"
+        f"🔻 *Осталось*: {remaining} ккал\n"
+        f"💪 *Белки*: {proteins} г\n"
+        f"🧈 *Жиры*: {fats} г\n"
+        f"🍞 *Углеводы*: {carbs} г"
+    )
+
+    await callback.message.answer(confirm_text, parse_mode="Markdown")
+    await callback.answer()
+
+
+async def show_stats_callback(callback: types.CallbackQuery):
+    """Показывает текущую статистику за день без добавления блюда."""
+    await _send_stats(callback.from_user.id, callback.message.answer)
+    await callback.answer()
