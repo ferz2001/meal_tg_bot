@@ -19,31 +19,55 @@ async def create_db():
             user_id INTEGER,
             name TEXT,
             calories INTEGER,
+            proteins REAL DEFAULT 0,
+            fats REAL DEFAULT 0,
+            carbs REAL DEFAULT 0,
             date TEXT
         )
         """)
+        # Миграция: добавить столбцы если таблица уже существует без них
+        for col, col_type in [("proteins", "REAL DEFAULT 0"), ("fats", "REAL DEFAULT 0"), ("carbs", "REAL DEFAULT 0")]:
+            try:
+                await db.execute(f"ALTER TABLE meals ADD COLUMN {col} {col_type}")
+            except Exception:
+                pass  # Столбец уже существует
         await db.commit()
 
 
-async def add_meal(user_id: int, name: str, calories: int):
+async def add_meal(user_id: int, name: str, calories: int,
+                   proteins: float = 0, fats: float = 0, carbs: float = 0):
     """Добавляет запись о блюде в дневник."""
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("""
-        INSERT INTO meals (user_id, name, calories, date)
-        VALUES (?, ?, ?, ?)
-        """, (user_id, name, calories, date.today().isoformat()))
+        INSERT INTO meals (user_id, name, calories, proteins, fats, carbs, date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, name, calories, proteins, fats, carbs, date.today().isoformat()))
         await db.commit()
 
 
 async def get_meals_for_today(user_id: int):
-    """Возвращает список блюд (название и калории) за сегодняшний день."""
+    """Возвращает список блюд (название, калории, белки, жиры, углеводы) за сегодняшний день."""
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("""
-        SELECT name, calories FROM meals
+        SELECT name, calories, proteins, fats, carbs FROM meals
         WHERE user_id = ? AND date = ?
         """, (user_id, date.today().isoformat()))
         meals = await cursor.fetchall()
         return meals
+
+
+async def get_macros_for_today(user_id: int):
+    """Возвращает суммарные макронутриенты (белки, жиры, углеводы) за сегодняшний день."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+        SELECT SUM(proteins), SUM(fats), SUM(carbs) FROM meals
+        WHERE user_id = ? AND date = ?
+        """, (user_id, date.today().isoformat()))
+        result = await cursor.fetchone()
+        proteins = round(result[0] or 0, 1)
+        fats = round(result[1] or 0, 1)
+        carbs = round(result[2] or 0, 1)
+        return proteins, fats, carbs
 
 
 async def get_daily_calories(user_id: int):
