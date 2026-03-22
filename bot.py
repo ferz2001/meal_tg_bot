@@ -1,11 +1,12 @@
 import logging
 import asyncio
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import BotCommand
+from typing import Callable, Dict, Any, Awaitable
+from aiogram import Bot, Dispatcher, F, BaseMiddleware
+from aiogram.types import BotCommand, Message, TelegramObject
 from aiogram.filters import Command
 
 from config import settings
-from db import create_db
+from db import create_db, log_message
 from commands import (done_command, start_command, setgoal_command, stats_command, reset_command,
                       process_photo_and_additional, eat_command, add_meal_callback,
                       show_stats_callback, reset_stats_callback)
@@ -16,6 +17,44 @@ dp = Dispatcher()
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
+
+
+class MessageLoggingMiddleware(BaseMiddleware):
+    """Middleware для логирования всех входящих сообщений в БД."""
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any],
+    ) -> Any:
+        if isinstance(event, Message):
+            user = event.from_user
+            user_id = user.id if user else 0
+            username = user.username or "" if user else ""
+            first_name = user.first_name or "" if user else ""
+
+            if event.text:
+                message_type = "text"
+                content = event.text
+            elif event.photo:
+                message_type = "photo"
+                content = event.caption or "[photo]"
+            elif event.voice:
+                message_type = "voice"
+                content = "[voice]"
+            else:
+                message_type = "other"
+                content = str(event.content_type)
+
+            try:
+                await log_message(user_id, username, first_name, message_type, content)
+            except Exception as e:
+                logging.warning(f"Failed to log message: {e}")
+
+        return await handler(event, data)
+
+dp.message.middleware(MessageLoggingMiddleware())
 
 dp.message.register(start_command, Command("start"))
 dp.message.register(setgoal_command, Command("setgoal"))

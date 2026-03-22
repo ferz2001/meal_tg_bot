@@ -31,6 +31,27 @@ async def create_db():
                 await db.execute(f"ALTER TABLE meals ADD COLUMN {col} {col_type}")
             except Exception:
                 pass  # Столбец уже существует
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            first_name TEXT,
+            message_type TEXT,
+            content TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        await db.commit()
+
+
+async def log_message(user_id: int, username: str, first_name: str, message_type: str, content: str):
+    """Логирует входящее сообщение от пользователя в БД."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""
+        INSERT INTO messages (user_id, username, first_name, message_type, content)
+        VALUES (?, ?, ?, ?, ?)
+        """, (user_id, username, first_name, message_type, content))
         await db.commit()
 
 
