@@ -8,7 +8,7 @@ from config import settings
 from db import create_db
 from commands import (done_command, start_command, setgoal_command, stats_command, reset_command,
                       process_photo_and_additional, eat_command, add_meal_callback,
-                      show_stats_callback)
+                      show_stats_callback, reset_stats_callback)
 
 # Инициализируем бота и диспетчер
 bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
@@ -26,6 +26,7 @@ dp.message.register(process_photo_and_additional, F.photo)
 dp.message.register(eat_command, Command("eat"))
 dp.callback_query.register(show_stats_callback, F.data == "show_stats")
 dp.callback_query.register(add_meal_callback, F.data == "add_meal")
+dp.callback_query.register(reset_stats_callback, F.data == "reset_stats")
 
 
 async def main():

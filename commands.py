@@ -67,7 +67,10 @@ async def _send_stats(user_id: int, reply_func):
         f"🍽 *Съеденные блюда:*\n{meals_text}"
     )
 
-    await reply_func(text, parse_mode="Markdown")
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🗑 Очистить статистику", callback_data="reset_stats")],
+    ])
+    await reply_func(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
 async def eat_command(message: types.Message):
@@ -201,4 +204,12 @@ async def add_meal_callback(callback: types.CallbackQuery):
 async def show_stats_callback(callback: types.CallbackQuery):
     """Показывает текущую статистику за день без добавления блюда."""
     await _send_stats(callback.from_user.id, callback.message.answer)
+    await callback.answer()
+
+
+async def reset_stats_callback(callback: types.CallbackQuery):
+    """Сбрасывает статистику за день."""
+    await reset_daily_meals(callback.from_user.id)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer("🗑 Статистика за сегодня очищена!")
     await callback.answer()
